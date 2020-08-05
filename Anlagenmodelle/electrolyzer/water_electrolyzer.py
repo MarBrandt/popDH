@@ -125,7 +125,7 @@ for P in np.linspace(0.2,1,9)*P_design:
     E_zu        += [power.P.val/1e6]
     eta         += [(comp_hydro.m.val * Hu) / (power.P.val/1e6)]
 
-# Temperature influence
+# # Temperature influence
 
 # el_cw_hot.set_attr(T=np.nan)
 
@@ -137,7 +137,7 @@ for P in np.linspace(0.2,1,9)*P_design:
 #     nw.solve('offdesign', init_path='water_electrolyzer',
 #              design_path='water_electrolyzer')
     
-#     print(comp_hydro.m.val * Hu /(power.P.val/1e6))
+#     print('Systemwirkungsgrad: ' + str(comp_hydro.m.val * Hu /(power.P.val/1e6)))
 
 # %% analysis
 
@@ -158,17 +158,16 @@ plt.scatter(E_zu, Hydro_nutz)
 plt.plot([0,P_max],[c0,c0+P_max*c1],c="red",alpha=0.5)
 plt.plot()
 
-plt.xlim(E_zu[0],E_zu[8])
-plt.ylim(0,Hydro_nutz[8])
+plt.xlim(E_zu[0],E_zu[-1])
+plt.ylim(0,Hydro_nutz[-1])
 
-plt.text(20, 14, r'y = 0.542 + 0.781x (r=0.999)', fontsize=10)
+plt.text(20, 14, r'y = {0} + {1}x (r=0.999)'.format(round(c0,3), round(c1,3)), fontsize=10)
 plt.xlabel("E$_{el,input}$ (MW)")
 plt.ylabel("H$_2$-Output (MW)")
 plt.grid(alpha=0.4)
 
 plt.show()
 
-dirpath = path.abspath(path.join(__file__, "../../.."))
 writepath = path.join(dirpath,
                       'Abbildungen', 'LinearRegression_Electrolyzer.pdf')
 plt.savefig(writepath)
