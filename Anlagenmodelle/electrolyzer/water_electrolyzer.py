@@ -105,24 +105,23 @@ nw.solve('design')
 nw.print_results()
 nw.save('water_electrolyzer')
 P_design = el.P.val
-P_max = power.P.val
 
 # Offdesign - Mode
 
-Hydro_nutz = []
-Q_nutz = []
-E_zu = []
+Hydro = []
+Q = []
+P = []
 eta = []
 
-for P in np.linspace(0.2,1,9)*P_design:
-    el.set_attr(P=P)
+for workload in np.linspace(0.2,1,9)*P_design:
+    el.set_attr(P=workload)
     
     nw.solve('offdesign', init_path='water_electrolyzer',
               design_path='water_electrolyzer')
     
-    Hydro_nutz  += [comp_hydro.m.val * Hu]
-    Q_nutz      += [el.Q.val]
-    E_zu        += [power.P.val/1e6]
+    Hydro       += [comp_hydro.m.val * Hu]
+    Q           += [el.Q.val]
+    P           += [power.P.val/1e6]
     eta         += [(comp_hydro.m.val * Hu) / (power.P.val/1e6)]
 
 # # Temperature influence
@@ -143,9 +142,9 @@ for P in np.linspace(0.2,1,9)*P_design:
 
 # determining c0, c1 for the oemof OffsetTransformer
 # Linear regression: Hydro_nutz = a + b * E_zu
-c1, c0, r, p, std = linregress(E_zu, Hydro_nutz)
+c1, c0, r, p, std = linregress(P, Hydro)
 
-solph_komp = {'P_in_max / MW': E_zu[-1], 'P_in_min / MW': E_zu[0],
+solph_komp = {'P_in_max / MW': max(P), 'P_in_min / MW': min(P),
               'c_1': c1, 'c_0': c0}
 df = pd.DataFrame([solph_komp])
 
@@ -154,15 +153,17 @@ writepath = path.join(dirpath, 'Eingangsdaten', 'electrolyzer.csv')
 df.to_csv(writepath, sep=';', na_rep='#N/A', index=False)
 
 # Plot of linear regression
-plt.scatter(E_zu, Hydro_nutz)
-plt.plot([0,P_max],[c0,c0+P_max*c1],c="red",alpha=0.5)
+plt.scatter(P, Hydro)
+plt.plot([0,max(P)],[c0,c0+max(P)*c1],c="red",alpha=0.5)
 plt.plot()
 
-plt.xlim(E_zu[0],E_zu[-1])
-plt.ylim(0,Hydro_nutz[-1])
+plt.xlim(min(P),max(P))
+plt.ylim(0,max(Hydro))
 
-plt.text(20, 14, r'y = {0} + {1}x (r=0.999)'.format(round(c0,3), round(c1,3)), fontsize=10)
-plt.xlabel("E$_{el,input}$ (MW)")
+plt.text(20, 14, r'y = {0} + {1}x (r={2})'.format(round(c0,3),
+                                                  round(c1,3),
+                                                  round(r,3)), fontsize=10)
+plt.xlabel("P$_{el,input}$ (MW)")
 plt.ylabel("H$_2$-Output (MW)")
 plt.grid(alpha=0.4)
 

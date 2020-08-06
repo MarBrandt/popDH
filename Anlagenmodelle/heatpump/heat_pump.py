@@ -7,18 +7,37 @@ Created on Wed Aug  5 13:41:41 2020
 
 # %% imports
 
+import matplotlib.pyplot as plt
+
 import numpy as np
 
 import pandas as pd
+
+from scipy.stats import linregress
 
 from tespy.networks import network
 from tespy.components import (
     sink, source, splitter, compressor, condenser, pump, heat_exchanger_simple,
     valve, drum, heat_exchanger, cycle_closer
 )
-from tespy.connections import connection, ref
+from tespy.connections import bus, connection, ref
 from tespy.tools.characteristics import char_line
 from tespy.tools.characteristics import load_default_char as ldc
+
+import os.path as path
+
+
+# %% importing data
+
+dirpath = path.abspath(path.join(__file__, "../../.."))
+readpath = path.join(dirpath, 'Eingangsdaten', 'fake_environmental_data.csv')
+data = pd.read_csv(readpath, sep=";")
+
+
+# %% boundaries
+
+workload = np.linspace(0.5, 1, 5)
+print(workload)
 
 
 # %% network
@@ -119,6 +138,22 @@ ic_out = connection(ic, 'out2', amb_out2, 'in1')
 nw.add_conns(cp1_he, he_cp2, sp_ic, ic_out, cp2_c_out)
 
 
+# %% busses
+
+# create characteristic line for the compressor motor
+x = np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.1])
+y = np.array([0.85, 0.93, 0.95, 0.96, 0.97, 0.96])
+mot1 = char_line(x=x, y=y)
+
+power = bus('total power bus')
+power.add_comps({'comp': pu, 'char': mot1},
+                {'comp': erp, 'char': mot1},
+                {'comp': cp1, 'char': mot1},
+                {'comp': cp2, 'char': mot1},
+                {'comp': dhp, 'char': mot1})
+nw.add_busses(power)
+
+
 # %% component parametrization
 
 # condenser system
@@ -158,7 +193,7 @@ ic.set_attr(pr1=0.99, pr2=0.98, design=['pr1', 'pr2'],
 
 c_in_cd.set_attr(fluid={'air': 0, 'NH3': 1, 'water': 0})
 cb_dhp.set_attr(T=60, p=10, fluid={'air': 0, 'NH3': 0, 'water': 1})
-cd_cons.set_attr(T=90)
+cd_cons.set_attr(T=100)
 cons_cf.set_attr(h=ref(cb_dhp, 1, 0), p=ref(cb_dhp, 1, 0))
 
 # evaporator system cold side
@@ -182,7 +217,8 @@ ic_out.set_attr(T=30, design=['T'])
 
 # %% key paramter
 
-cons.set_attr(Q=-30*1e6)
+Q_design = -30*1e6
+cons.set_attr(Q=Q_design)
 
 
 # %% calculation
@@ -191,26 +227,62 @@ nw.solve('design')
 nw.print_results()
 nw.save('heat_pump')
 
+P_design = power.P.val
+print(P_design)
 
-# T_range = [6, 12, 18, 24, 30]
-# Q_range = np.array([100e3, 120e3, 140e3, 160e3, 180e3, 200e3, 220e3])
-# df = pd.DataFrame(columns=Q_range / -cons.Q.val)
+# cons.set_attr(Q=np.nan)
+# cd_cons.set_attr(T=66)
+# amb_p.set_attr(T=25)
+# power.set_attr(P=16847531.92616716 * 0.5)
+# nw.solve('offdesign', init_path='heat_pump', design_path='heat_pump')
 
-# for T in T_range:
-#     amb_p.set_attr(T=T)
-#     eps = []
+df = pd.DataFrame()
 
-#     for Q in Q_range:
-#         cons.set_attr(Q=-Q)
-#         nw.solve('offdesign', design_path='heat_pump_water')
+# Temperatur muss in gewissen Grenzen bleiben!
+i = 0
+for T_VL in data['T_VL']:
+    T_water_amb = data['T_water_amb'][i]
 
-#         if nw.lin_dep:
-#             eps += [np.nan]
-#         else:
-#             eps += [
-#                 abs(cd.Q.val) / (cp1.P.val + cp2.P.val + erp.P.val + pu.P.val)
-#             ]
+    cons.set_attr(Q=np.nan)
+    
+    P = []
+    Q = []
+    
+    for wl in workload:
+        power.set_attr(P=P_design * wl)
+        cd_cons.set_attr(T=T_VL)
+        amb_p.set_attr(T=T_water_amb)
+             
+        nw.solve('offdesign', init_path='heat_pump', design_path='heat_pump')
+        
+        P += [power.P.val/1e6]
+        Q += [-cons.Q.val/1e6]
+        
+    c1, c0, r, p, std = linregress(P, Q)  
+    
+    solph_komp = pd.DataFrame([{'P_in_max / MW': max(P),
+                                'P_in_min / MW': min(P),
+                                'c_1': c1, 'c_0': c0}])
+    df = pd.concat([df, solph_komp])
+    
+    
+    plt.plot(P, Q)
+    plt.plot([0,max(P)],[c0,c0+max(P)*c1],c="red",alpha=0.5)
+    plt.plot()
+    
+    plt.xlim(min(P),max(P))
+    plt.ylim(0,max(Q))
+    
+    plt.text(8, 14, r'y = {0} + {1}x (r={2})'.format(round(c0,3),
+                                                      round(c1,3),
+                                                      round(r,3)), fontsize=10)
+    plt.xlabel("P (MW)")
+    plt.ylabel("$\dot{Q}$ (MW)")
+    plt.grid(alpha=0.4)
+    
+    plt.show()
+    
+    i += 1
 
-#     df.loc[T] = eps
-
-# df.to_csv('COP_water.csv')
+writepath = path.join(dirpath, 'Eingangsdaten', 'heat_pump.csv')
+df.to_csv(writepath, sep=';', na_rep='#N/A', index=False)
