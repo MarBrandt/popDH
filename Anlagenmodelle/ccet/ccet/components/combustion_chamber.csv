@@ -1,0 +1,2 @@
+label;comp_type;busses;bus_param;bus_P_ref;bus_char;bus_base;design;offdesign;design_path;local_design;local_offdesign;lamb;lamb_set;lamb_var;ti;ti_set;ti_var;S;S_set
+combustion;combustion_chamber;[];[];[];[];[];[];[];nan;False;False;1.7473310441637029;False;False;578868401.6026915;False;False;nan;False

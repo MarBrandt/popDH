@@ -1,0 +1,5 @@
+label;P;P_set
+gas_turbine_bus;-222696970.99973112;False
+steam_turbine_bus;-107894934.89455381;False
+heat;-20000000.000000007;False
+total power;-330591905.89428496;False

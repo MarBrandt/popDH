@@ -1,0 +1,5 @@
+label;comp_type;busses;bus_param;bus_P_ref;bus_char;bus_base;design;offdesign;design_path;local_design;local_offdesign
+Rauchgas;sink;[];[];[];[];[];[];[];nan;False;False
+Frischdampf Senke;sink;[];[];[];[];[];[];[];nan;False;False
+Kuehlwasser Austritt;sink;[];[];[];[];[];[];[];nan;False;False
+dh sink;sink;[];[];[];[];[];[];[];nan;False;False
