@@ -37,8 +37,8 @@ fluid_list = ['Ar', 'N2', 'O2', 'CO2', 'CH4', 'H2O']
 nw = network(fluids=fluid_list, p_unit='bar', T_unit='C', h_unit='kJ / kg',
                  p_range=[1, 15], T_range=[10, 1200], h_range=[500, 4000])
 
-t_dh_in = 50
-t_dh_out = 124
+t_dh_in = 50        
+t_dh_out = 124      # might change due to 4GDH
 
 # %% components
 # gas turbine part
