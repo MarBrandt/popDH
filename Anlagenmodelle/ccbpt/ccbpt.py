@@ -7,6 +7,8 @@ Created on Thu Aug 13 11:24:02 2020
 
 # %% imports
 
+from fluprodia import FluidPropertyDiagram
+
 import numpy as np
 
 from tespy.networks import network
@@ -82,9 +84,12 @@ nw.add_conns(air_source.air_compressor, air_compressor.combustion_chamber,
 # steam turbine part
 fs_source.steam_generator = connection(fs_source, 'out1', 
                                        steam_generator, 'in2')
-steam_generator.fs_sink = connection(steam_generator, 'out2', fs_sink, 'in1')
+steam_generator.steam_turbine = connection(steam_generator, 'out2',
+                                           steam_turbine, 'in1')
+steam_turbine.fs_sink = connection(steam_turbine, 'out1', fs_sink, 'in1')
 
-nw.add_conns(fs_source.steam_generator, steam_generator.fs_sink)
+nw.add_conns(fs_source.steam_generator, steam_generator.steam_turbine,
+             steam_turbine.fs_sink)
 
 
 # %% parameterisation
@@ -95,7 +100,10 @@ air_compressor.set_attr(pr=14, eta_s=0.91, design=['eta_s'],
                         offdesign=['char_map'])
 gas_turbine.set_attr(eta_s=0.9, design=['eta_s'],
                      offdesign=['eta_s_char', 'cone'])
-steam_generator.set_attr(pr1=0.99, pr2=0.99,  ttd_u=50)
+steam_generator.set_attr(pr1=0.99, pr2=0.99)
+
+# steam turbine part
+steam_turbine.set_attr(eta_s=0.9)
 
 # connections
 # gas turbine part
@@ -112,6 +120,8 @@ steam_generator.exhaust_gas.set_attr(p=1, T=150)
 fs_source.steam_generator.set_attr(p=100, T=35, 
                                    fluid={'Ar': 0, 'N2': 0, 'H2O': 1,
                                           'CH4': 0, 'CO2': 0, 'O2': 0})
+steam_generator.steam_turbine.set_attr(T=500)
+steam_turbine.fs_sink.set_attr(p=0.1, h0=500)
 
 
 #key parameter
@@ -119,5 +129,4 @@ combustion_chamber.set_attr(ti=50e6) # 50 MW combustion chamber
 
 # %% solving
 
-nw.solve('design') 
-print(steam_generator.fs_sink.T.val)
+nw.solve('design')
