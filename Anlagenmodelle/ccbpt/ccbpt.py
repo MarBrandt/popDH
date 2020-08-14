@@ -86,10 +86,22 @@ fs_source.steam_generator = connection(fs_source, 'out1',
                                        steam_generator, 'in2')
 steam_generator.steam_turbine = connection(steam_generator, 'out2',
                                            steam_turbine, 'in1')
-steam_turbine.fs_sink = connection(steam_turbine, 'out1', fs_sink, 'in1')
+steam_turbine.dh_heat_exchanger = connection(steam_turbine, 'out1',
+                                             dh_heat_exchanger, 'in1')
+dh_heat_exchanger.pump = connection(dh_heat_exchanger, 'out1', pump, 'in1')
+pump.fs_sink = connection(pump, 'out1', fs_sink, 'in1')
 
 nw.add_conns(fs_source.steam_generator, steam_generator.steam_turbine,
-             steam_turbine.fs_sink)
+             steam_turbine.dh_heat_exchanger, dh_heat_exchanger.pump,
+             pump.fs_sink)
+
+# district heating part
+dh_source.dh_heat_exchanger = connection(dh_source, 'out1',
+                                         dh_heat_exchanger, 'in2')
+dh_heat_exchanger.dh_sink = connection(dh_heat_exchanger, 'out2',
+                                       dh_sink, 'in1')
+
+nw.add_conns(dh_source.dh_heat_exchanger, dh_heat_exchanger.dh_sink)
 
 
 # %% parameterisation
@@ -103,7 +115,12 @@ gas_turbine.set_attr(eta_s=0.9, design=['eta_s'],
 steam_generator.set_attr(pr1=0.99, pr2=0.99)
 
 # steam turbine part
-steam_turbine.set_attr(eta_s=0.9)
+steam_turbine.set_attr(eta_s=0.9, design=['eta_s'], offdesign=['eta_s_char',
+                                                               'cone'])
+pump.set_attr(eta_s=0.8, design=['eta_s'], offdesign=['eta_s_char'])
+
+# district heating
+dh_heat_exchanger.set_attr(pr1=0.99, pr2=0.99, ttd_u=5)
 
 # connections
 # gas turbine part
@@ -121,7 +138,14 @@ fs_source.steam_generator.set_attr(p=100, T=35,
                                    fluid={'Ar': 0, 'N2': 0, 'H2O': 1,
                                           'CH4': 0, 'CO2': 0, 'O2': 0})
 steam_generator.steam_turbine.set_attr(T=500)
-steam_turbine.fs_sink.set_attr(p=0.1, h0=500)
+dh_heat_exchanger.pump.set_attr(x=0)
+pump.fs_sink.set_attr(p=ref(fs_source.steam_generator, 1, 0))
+
+# district heating part
+dh_source.dh_heat_exchanger.set_attr(T=t_dh_in, p=10,
+                                     fluid={'Ar': 0, 'N2': 0,'H2O': 1,
+                                            'CH4': 0, 'CO2': 0, 'O2': 0})
+dh_heat_exchanger.dh_sink.set_attr(T=t_dh_out)
 
 
 #key parameter
