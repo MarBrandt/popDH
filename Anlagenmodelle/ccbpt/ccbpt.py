@@ -112,7 +112,8 @@ air_compressor.set_attr(pr=14, eta_s=0.91, design=['eta_s'],
                         offdesign=['char_map'])
 gas_turbine.set_attr(eta_s=0.9, design=['eta_s'],
                      offdesign=['eta_s_char', 'cone'])
-steam_generator.set_attr(pr1=0.99, pr2=0.99)
+steam_generator.set_attr(pr1=0.99, pr2=0.99, design=['pr2'],
+             offdesign=['zeta2', 'kA_char'])
 
 # steam turbine part
 steam_turbine.set_attr(eta_s=0.9, design=['eta_s'], offdesign=['eta_s_char',
@@ -120,7 +121,9 @@ steam_turbine.set_attr(eta_s=0.9, design=['eta_s'], offdesign=['eta_s_char',
 pump.set_attr(eta_s=0.8, design=['eta_s'], offdesign=['eta_s_char'])
 
 # district heating
-dh_heat_exchanger.set_attr(pr1=0.99, pr2=0.99, ttd_u=5)
+dh_heat_exchanger.set_attr(pr1=0.99, pr2=0.99, ttd_u=5,
+                           design=['pr2', 'ttd_u'],
+                           offdesign=['zeta2', 'kA_char'])
 
 # connections
 # gas turbine part
@@ -148,9 +151,38 @@ dh_source.dh_heat_exchanger.set_attr(T=t_dh_in, p=10,
 dh_heat_exchanger.dh_sink.set_attr(T=t_dh_out)
 
 
-#key parameter
-combustion_chamber.set_attr(ti=50e6) # 50 MW combustion chamber
+# %% Busses
+
+# power bus
+power = bus('power output')
+x = np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.1])
+y = np.array([0.85, 0.93, 0.95, 0.96, 0.97, 0.96])
+# create a characteristic line for a generator
+gen1 = char_line(x=x, y=y)
+
+power.add_comps(
+    {'comp': gas_turbine, 'char': gen1},
+    {'comp': steam_turbine, 'char': gen1},
+    {'comp': air_compressor})
+nw.add_busses(power)
+
+# heat bus
+heat = bus('heat output')
+heat.add_comps({'comp': dh_heat_exchanger})
+nw.add_busses(heat)
+
+
+# %% key parameter
+# combustion_chamber.set_attr(ti=50e6) # 50 MW combustion chamber
+# power.set_attr(P=-50e6)
+heat.set_attr(P=-30e6)
 
 # %% solving
 
 nw.solve('design')
+print(power.P.val/1e6)
+print(heat.P.val/1e6)
+print(-(power.P.val + heat.P.val)/combustion_chamber.ti.val)
+
+print("Brennkammer Qzu: {0} MW".format(round(combustion_chamber.ti.val/1e6,2)))
+print("Frischdampfmassenstrom: {0} kg/s".format(round(steam_generator.steam_turbine.m.val,2)))
