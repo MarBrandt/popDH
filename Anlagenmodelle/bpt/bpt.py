@@ -120,7 +120,7 @@ nw.add_busses(power)
 # components
 st.set_attr(eta_s=0.9, design=['eta_s'], offdesign=['eta_s_char', 'cone'])
 con.set_attr(pr1=0.99, pr2=0.99, ttd_u=5, design=['pr2', 'ttd_u'],
-             offdesign=['zeta2', 'kA_char'])
+             offdesign=['kA_char'])
 pu.set_attr(eta_s=0.8, design=['eta_s'], offdesign=['eta_s_char'])
 sg1.set_attr(pr=0.99)
 sg2.set_attr(pr=0.99)
@@ -141,8 +141,19 @@ con.set_attr(Q=-30e6)
 
 # %% solving design mode
 nw.solve('design')
+nw.save('bpt')
 
 
 # plotting Ts-Diagram
 results = results()
 plot_Ts(results)
+
+
+# %% offdesign
+
+con.set_attr(Q=np.nan)
+power.set_attr(P=-10263542.03178198)
+
+nw.solve('offdesign', init_path='bpt', design_path='bpt')
+print(power.P.val)
+
