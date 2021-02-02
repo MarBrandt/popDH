@@ -11,14 +11,13 @@ from fluprodia import FluidPropertyDiagram
 
 import numpy as np
 
-from tespy.networks import network
+from tespy.networks import Network
 from tespy.components import (
-    sink, source, compressor, condenser, pump,
-    heat_exchanger_simple, cycle_closer, turbine,
-    
+    Sink, Source, Compressor, Condenser, Pump,
+    HeatExchangerSimple, CycleCloser, Turbine,    
 )
-from tespy.connections import bus, connection, ref
-from tespy.tools.characteristics import char_line
+from tespy.connections import Bus, Connection
+from tespy.tools.characteristics import CharLine
 from tespy.tools.characteristics import load_default_char as ldc
 
 
@@ -59,7 +58,7 @@ def results():
 
 fluid_list = ['BICUBIC::H2O']
 
-nw = network(fluids=fluid_list,  p_unit='bar', T_unit='C',
+nw = Network(fluids=fluid_list,  p_unit='bar', T_unit='C',
              h_unit='kJ / kg', v_unit='l / s', iterinfo=False)
 
 T_dh_in = 50
@@ -68,46 +67,46 @@ T_dh_out = 124          # might change due to 4GDH
 
 # %% components
 
-st = turbine('steam turbine')
-con = condenser('condenser')
-pu = pump('feed water pump')
-sg1 = heat_exchanger_simple('steam generator: feed water heater')
-sg2 = heat_exchanger_simple('steam generator: evaporater')
-sg3 = heat_exchanger_simple('steam generator: superheater')
-cc = cycle_closer('cycle closer')
+st = Turbine('steam Turbine')
+con = Condenser('Condenser')
+pu = Pump('feed water Pump')
+sg1 = HeatExchangerSimple('steam generator: feed water heater')
+sg2 = HeatExchangerSimple('steam generator: evaporater')
+sg3 = HeatExchangerSimple('steam generator: superheater')
+cc = CycleCloser('cycle closer')
 
-dh_source = source('district heating source')
-dh_sink = sink('district heating sink')
+dh_Source = Source('district heating Source')
+dh_Sink = Sink('district heating Sink')
 
 
-# %% connection
+# %% Connection
 
 # steam part
-cc_st = connection(cc, 'out1', st, 'in1')
-st_con = connection(st, 'out1', con, 'in1')
-con_pu = connection(con, 'out1', pu, 'in1')
-pu_sg1 = connection(pu, 'out1', sg1, 'in1')
-sg1_sg2 = connection(sg1, 'out1', sg2, 'in1')
-sg2_sg3 = connection(sg2, 'out1', sg3, 'in1')
-sg3_cc = connection(sg3, 'out1', cc, 'in1')
+cc_st = Connection(cc, 'out1', st, 'in1')
+st_con = Connection(st, 'out1', con, 'in1')
+con_pu = Connection(con, 'out1', pu, 'in1')
+pu_sg1 = Connection(pu, 'out1', sg1, 'in1')
+sg1_sg2 = Connection(sg1, 'out1', sg2, 'in1')
+sg2_sg3 = Connection(sg2, 'out1', sg3, 'in1')
+sg3_cc = Connection(sg3, 'out1', cc, 'in1')
 
 nw.add_conns(cc_st, st_con, con_pu, pu_sg1, sg1_sg2, sg2_sg3, sg3_cc)
 
 # district heating
-dh_source_con = connection(dh_source, 'out1', con, 'in2')
-con_dh_sink = connection(con, 'out2', dh_sink, 'in1')
+dh_Source_con = Connection(dh_Source, 'out1', con, 'in2')
+con_dh_Sink = Connection(con, 'out2', dh_Sink, 'in1')
 
-nw.add_conns(dh_source_con, con_dh_sink)
+nw.add_conns(dh_Source_con, con_dh_Sink)
 
 
-# %% busses
+# %% Busses
 
-# power bus
-power = bus('power output')
+# power Bus
+power = Bus('power output')
 x = np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.1])
 y = np.array([0.85, 0.93, 0.95, 0.96, 0.97, 0.96])
 # create a characteristic line for a generator
-gen = char_line(x=x, y=y)
+gen = CharLine(x=x, y=y)
 
 power.add_comps(
     {'comp': st, 'char': gen},
@@ -128,11 +127,11 @@ sg3.set_attr(pr=.99)
 
 sg1_sg2.set_attr(x=0)
 sg2_sg3.set_attr(x=1)
-# connections
+# Connections
 cc_st.set_attr(T=500, p=100, fluid={'H2O': 1})
 
-dh_source_con.set_attr(T=T_dh_in, p=10, fluid={'H2O': 1})
-con_dh_sink.set_attr(T=T_dh_out)
+dh_Source_con.set_attr(T=T_dh_in, p=10, fluid={'H2O': 1})
+con_dh_Sink.set_attr(T=T_dh_out)
 
 
 # %% keyparameter
@@ -143,6 +142,7 @@ con.set_attr(Q=-30e6)
 nw.solve('design')
 nw.save('bpt')
 
+print(power.P.val)
 
 # plotting Ts-Diagram
 results = results()
@@ -152,7 +152,7 @@ plot_Ts(results)
 # %% offdesign
 
 con.set_attr(Q=np.nan)
-power.set_attr(P=-10263542.03178198)
+power.set_attr(P=-10263542)
 
 nw.solve('offdesign', init_path='bpt', design_path='bpt')
 print(power.P.val)
